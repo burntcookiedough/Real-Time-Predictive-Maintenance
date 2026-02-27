@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Data and models
+/hdfs_temp/
+/models/
+/checkpoints/
+/spark-warehouse/
+*.csv
+
+# Downloaded Binaries and local environments (Hadoop/Java)
+/jdk-17*/
+/hadoop/
+/jdk-17.zip
+
+# Logs
+*.log
+
+# IDEs
+.vscode/
+.idea/

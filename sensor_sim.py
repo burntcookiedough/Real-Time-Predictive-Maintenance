@@ -25,6 +25,17 @@ def main():
     print(f"Connected to Kafka broker at {config.KAFKA_BROKER}")
     print(f"Starting to stream data to topic: {config.TOPIC_RAW}")
 
+    # Generate static graph relationships for machines
+    unique_machines = df['Product ID'].unique()
+    import random
+    machine_graph = {}
+    for process in unique_machines:
+        # Each machine connects to 1-3 other random machines
+        connections = random.sample(list(unique_machines), random.randint(1, 3))
+        # Prevent self-loop in this simple simulation
+        connections = [m for m in connections if m != process]
+        machine_graph[process] = connections
+
     # Stream data row by row
     try:
         for index, row in df.iterrows():
@@ -32,6 +43,10 @@ def main():
             message = row.to_dict()
             # Add a timestamp to simulate real-time generation
             message['timestamp'] = time.time()
+            
+            # Add Graph Edge Metadata
+            machine_id = message['Product ID']
+            message['connected_to'] = machine_graph.get(machine_id, [])
             
             # Send message to Kafka
             producer.send(config.TOPIC_RAW, value=message)

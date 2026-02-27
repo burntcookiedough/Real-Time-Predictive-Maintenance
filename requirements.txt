@@ -3,3 +3,6 @@ pandas
 scikit-learn
 torch
 numpy
+pyspark==3.5.3
+cassandra-driver
+graphframes
