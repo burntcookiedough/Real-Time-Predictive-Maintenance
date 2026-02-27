@@ -6,6 +6,7 @@ import FactoryFloorGrid from "@/components/FactoryFloorGrid";
 import PageRankLeaderboard from "@/components/PageRankLeaderboard";
 import CommunityClusters from "@/components/CommunityClusters";
 import { ServerCog, RefreshCcw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const [alerts, setAlerts] = useState<any[]>([]);
@@ -40,44 +41,43 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    // Initial fetch
     fetchData();
-
-    // High frequency polling for industrial factory UI (every 3 seconds)
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="container">
-      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <main className="max-w-[1440px] mx-auto p-4 md:p-8 min-h-screen">
+      <header className="mb-8 pb-4 border-b border-border-subtle flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
-          <h1><ServerCog size={24} /> Lambda Architecture: Predictive Maintenance</h1>
-          <p>Unified Real-Time & Batch Analytics View | Cassandra Serving Layer</p>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-3 uppercase tracking-wide">
+            <ServerCog className="text-content-secondary" size={28} />
+            Lambda Architecture Dashboard
+          </h1>
+          <p className="text-content-secondary text-sm font-mono mt-2">
+            Unified Real-Time & Batch Analytics View | Cassandra Serving Layer
+          </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: isLoading ? 'var(--text-tertiary)' : 'var(--signal-healthy)', fontSize: '0.85rem' }}>
-          <RefreshCcw size={16} className={isLoading ? "spin" : ""} />
+        <div className={cn(
+          "flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-full border",
+          isLoading
+            ? "text-content-tertiary border-border-subtle bg-surface"
+            : "text-signal-healthy border-signal-healthy bg-signal-healthy-bg"
+        )}>
+          <RefreshCcw size={16} className={isLoading ? "animate-spin-slow" : ""} />
           {isLoading ? "Polling..." : "System Sync Active"}
         </div>
-      </div>
+      </header>
 
-      {/* Speed Layer UI */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '1.5rem' }}>
+      <div className="flex flex-col gap-6 mb-6">
         <AlertTicker alerts={alerts} />
         <FactoryFloorGrid states={states} />
       </div>
 
-      {/* Batch / Graph Layer UI */}
-      <div className="grid-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <PageRankLeaderboard scores={pagerank} />
         <CommunityClusters communities={communities} />
       </div>
-
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        .spin { animation: spin 2s linear infinite; }
-      `}} />
-    </div>
+    </main>
   );
 }

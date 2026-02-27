@@ -1,62 +1,60 @@
 "use client";
 import React from "react";
 import { Server } from "lucide-react";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export default function FactoryFloorGrid({ states }: { states: any[] }) {
     if (!states || states.length === 0) {
         return (
-            <div className="card">
-                <div className="card-header">Factory Floor Status</div>
-                <p style={{ color: "var(--text-tertiary)" }}>Awaiting sensor spin-up...</p>
-            </div>
+            <Card>
+                <CardHeader>Factory Floor Status</CardHeader>
+                <CardContent>
+                    <p className="text-content-tertiary">Awaiting sensor spin-up...</p>
+                </CardContent>
+            </Card>
         );
     }
 
     return (
-        <div className="card">
-            <div className="card-header">
-                Factory Floor Status (Current State)
-                <span style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", textTransform: "none" }}>
+        <Card>
+            <CardHeader>
+                Factory Floor Status
+                <span className="text-xs text-content-tertiary normal-case font-normal">
                     Live Cassandra View
                 </span>
-            </div>
+            </CardHeader>
 
-            <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
-                gap: "1rem"
-            }}>
+            <CardContent className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-4">
                 {states.map((machine) => {
                     const isCritical = machine.status === "CRITICAL";
                     return (
                         <div
                             key={machine.machineId}
-                            style={{
-                                backgroundColor: isCritical ? "var(--signal-critical-bg)" : "var(--bg-surface-raised)",
-                                border: `1px solid ${isCritical ? "var(--signal-critical)" : "var(--border-subtle)"}`,
-                                borderRadius: "6px",
-                                padding: "1rem",
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: "0.5rem"
-                            }}
+                            className={cn(
+                                "flex flex-col items-center gap-2 p-4 rounded-md border text-center transition-colors duration-200",
+                                isCritical
+                                    ? "bg-signal-critical-bg border-signal-critical"
+                                    : "bg-surface-raised border-border-subtle"
+                            )}
                         >
-                            <Server size={24} color={isCritical ? "var(--signal-critical)" : "var(--signal-healthy)"} />
-                            <div style={{ textAlign: "center" }}>
-                                <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{machine.machineId}</div>
-                                <div style={{
-                                    fontSize: "0.75rem",
-                                    color: isCritical ? "var(--signal-critical)" : "var(--text-secondary)",
-                                    marginTop: "0.25rem"
-                                }}>
+                            <Server
+                                size={24}
+                                className={isCritical ? "text-signal-critical" : "text-signal-healthy"}
+                            />
+                            <div>
+                                <div className="font-semibold text-sm">{machine.machineId}</div>
+                                <div className={cn(
+                                    "text-xs mt-1 font-medium tracking-wide",
+                                    isCritical ? "text-signal-critical" : "text-content-secondary"
+                                )}>
                                     {machine.status}
                                 </div>
                             </div>
                         </div>
                     );
                 })}
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }

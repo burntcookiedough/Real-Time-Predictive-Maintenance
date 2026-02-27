@@ -1,44 +1,43 @@
 "use client";
 import React from "react";
 import { Network } from "lucide-react";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function CommunityClusters({ communities }: { communities: any[] }) {
     if (!communities || communities.length === 0) {
         return (
-            <div className="card">
-                <div className="card-header">Batch Analytics: Fault Cascade Clusters (Connected Components)</div>
-                <p style={{ color: "var(--text-tertiary)" }}>No graph analytics computed yet.</p>
-            </div>
+            <Card>
+                <CardHeader>Batch Analytics: Fault Cascade Clusters</CardHeader>
+                <CardContent>
+                    <p className="text-content-tertiary">No graph analytics computed yet.</p>
+                </CardContent>
+            </Card>
         );
     }
 
     return (
-        <div className="card">
-            <div className="card-header">
-                Batch Analytics: Fault Cascade Clusters (Connected Components)
-                <Network size={18} color="var(--text-secondary)" />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <Card>
+            <CardHeader>
+                Fault Cascade Clusters
+                <Network size={18} className="text-content-secondary" />
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
                 {communities.slice(0, 5).map((cluster: any, idx: number) => (
-                    <div key={idx} style={{
-                        padding: "1rem",
-                        backgroundColor: "var(--bg-base)",
-                        border: "1px solid var(--border-subtle)",
-                        borderRadius: "4px"
-                    }}>
-                        <div style={{ fontSize: "0.85rem", color: "var(--text-tertiary)", marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                            Cluster / Community {cluster.communityId}
+                    <div key={idx} className="p-4 bg-base border border-border-subtle rounded-md">
+                        <div className="text-xs text-content-tertiary mb-3 font-semibold uppercase tracking-wider">
+                            Cluster {cluster.communityId}
                         </div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                        <div className="flex flex-wrap gap-2">
                             {cluster.machines.map((machineId: string) => (
-                                <span key={machineId} className="badge badge-healthy" style={{ color: "var(--text-primary)", backgroundColor: "var(--bg-surface-raised)", border: "1px solid var(--border-accent)" }}>
+                                <Badge key={machineId} variant="default" className="font-mono text-[0.7rem] px-2">
                                     {machineId}
-                                </span>
+                                </Badge>
                             ))}
                         </div>
                     </div>
                 ))}
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }

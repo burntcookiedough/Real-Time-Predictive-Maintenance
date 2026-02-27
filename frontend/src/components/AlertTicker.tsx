@@ -1,60 +1,52 @@
 "use client";
 import React from "react";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 export default function AlertTicker({ alerts }: { alerts: any[] }) {
     if (!alerts || alerts.length === 0) {
         return (
-            <div className="card">
-                <div className="card-header">Recent Critical Anomalies (Speed Layer)</div>
-                <p style={{ color: "var(--text-tertiary)", fontSize: "0.85rem" }}>
-                    No critical alerts detected in the data stream.
-                </p>
-            </div>
+            <Card>
+                <CardHeader>Recent Critical Anomalies (Speed Layer)</CardHeader>
+                <CardContent>
+                    <p className="text-content-tertiary text-sm">
+                        No critical alerts detected in the data stream.
+                    </p>
+                </CardContent>
+            </Card>
         );
     }
 
     return (
-        <div className="card" style={{ borderLeft: "4px solid var(--signal-critical)" }}>
-            <div className="card-header">
-                Recent Critical Anomalies (Speed Layer)
-                <span className="badge badge-critical" style={{ animation: "pulse 1.5s infinite" }}>
+        <Card className="border-l-4 border-l-signal-critical">
+            <CardHeader>
+                <div className="flex items-center gap-2">
+                    <AlertTriangle className="text-signal-critical h-5 w-5" />
+                    Recent Critical Anomalies
+                </div>
+                <Badge variant="critical">
                     {alerts.length} Active
-                </span>
-            </div>
-            <table className="data-table">
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>Machine ID</th>
-                        <th>Vitals (RPM / Temp)</th>
-                        <th>Wear</th>
-                    </tr>
-                </thead>
-                <tbody>
+                </Badge>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-3">
                     {alerts.map((alert, idx) => (
-                        <tr key={`${alert.machineId}-${idx}`}>
-                            <td style={{ color: "var(--text-secondary)" }}>
-                                {new Date(alert.alertTime).toLocaleTimeString()}
-                            </td>
-                            <td style={{ fontWeight: 600 }}>{alert.machineId}</td>
-                            <td>
-                                {alert.rotationalSpeed.toFixed(0)} RPM / {alert.airTemp.toFixed(1)}K
-                            </td>
-                            <td style={{ color: alert.toolWear > 200 ? "var(--signal-warning)" : "inherit" }}>
-                                {alert.toolWear} min
-                            </td>
-                        </tr>
+                        <Alert key={`${alert.machineId}-${idx}`} variant="destructive" className="py-3">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle className="text-sm font-semibold">{alert.machineId}</AlertTitle>
+                            <AlertDescription className="flex justify-between items-center text-xs mt-1">
+                                <span>{new Date(alert.alertTime).toLocaleTimeString()}</span>
+                                <span>{alert.rotationalSpeed.toFixed(0)} RPM / {alert.airTemp.toFixed(1)}K</span>
+                                <span className={alert.toolWear > 200 ? "text-signal-warning font-bold" : ""}>
+                                    Wear: {alert.toolWear} min
+                                </span>
+                            </AlertDescription>
+                        </Alert>
                     ))}
-                </tbody>
-            </table>
-            <style dangerouslySetInnerHTML={{
-                __html: `
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
-      `}} />
-        </div>
+                </div>
+            </CardContent>
+        </Card>
     );
 }
