@@ -1,5 +1,4 @@
 import os
-import glob
 
 # Ensure JAVA_HOME is set for PySpark on this local machine
 if "JAVA_HOME" not in os.environ:

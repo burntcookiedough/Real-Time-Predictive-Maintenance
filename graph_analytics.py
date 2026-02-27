@@ -2,7 +2,6 @@ import os
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
 from graphframes import GraphFrame
-import config
 
 HDFS_PATH = "./hdfs_temp/*"
 
@@ -22,7 +21,7 @@ def main():
     print(f"Reading historical records from {HDFS_PATH} to construct graph...")
     try:
         df = spark.read.json(HDFS_PATH)
-    except Exception as e:
+    except Exception:
         print("No historical data found. Exiting.")
         return
 

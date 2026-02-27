@@ -1,10 +1,8 @@
-import os
 from pyspark.sql import SparkSession
 from pyspark.ml import Pipeline
-from pyspark.ml.feature import VectorAssembler, StringIndexer
+from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.classification import RandomForestClassifier
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
-import config
 
 # Simulating reading from HDFS. 
 # During real dev, HDFS_PATH = "hdfs://namenode:9000/user/hadoop/pdm_data/*"
@@ -24,7 +22,7 @@ def main():
     # Read all historical JSON files dumped by hdfs_writer.py
     try:
         df = spark.read.json(HDFS_PATH)
-    except Exception as e:
+    except Exception:
         print("No historical data found to train on yet.")
         return
         

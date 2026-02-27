@@ -1,5 +1,4 @@
 import json
-import time
 import os
 import pandas as pd
 import torch
@@ -40,7 +39,7 @@ class SimpleAutoencoder(nn.Module):
         return decoded
 
 def train_model(data_path, model_path):
-    print(f"\n--- Waking up for Cloud Retraining ---")
+    print("\n--- Waking up for Cloud Retraining ---")
     
     # Load historical data
     try:
@@ -98,7 +97,7 @@ def train_model(data_path, model_path):
     # Save the new model weights
     torch.save(model.state_dict(), model_path + ".pt")
     print(f"New global model trained and saved to {model_path}.pt")
-    print(f"--- Retraining Complete ---")
+    print("--- Retraining Complete ---")
 
 
 def main():

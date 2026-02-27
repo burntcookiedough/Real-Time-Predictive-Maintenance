@@ -1,7 +1,6 @@
-import os
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, DoubleType, StringType, ArrayType, LongType, IntegerType
+from pyspark.sql.types import StructType, StructField, DoubleType, StringType, ArrayType, IntegerType
 import config
 
 # Define Schema of incoming Kafka JSON
@@ -74,7 +73,7 @@ def main():
     )
 
     # Sink to Cassandra
-    query_alerts = df_cassandra_alerts.writeStream \
+    df_cassandra_alerts.writeStream \
         .format("org.apache.spark.sql.cassandra") \
         .option("keyspace", "pdm") \
         .option("table", "realtime_alerts") \
@@ -91,7 +90,7 @@ def main():
         F.col("Torque [Nm]").alias("torque")
     )
 
-    query_states = df_cassandra_states.writeStream \
+    df_cassandra_states.writeStream \
         .format("org.apache.spark.sql.cassandra") \
         .option("keyspace", "pdm") \
         .option("table", "machine_states") \
