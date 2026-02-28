@@ -120,4 +120,21 @@ def main():
     spark.streams.awaitAnyTermination()
 
 if __name__ == "__main__":
-    main()
+    import time as _time
+
+    MAX_BACKOFF = 60  # seconds
+    backoff = 5
+
+    while True:
+        try:
+            main()
+            # If main() returns normally (shouldn't in steady state), restart
+            logger.warning("awaitAnyTermination() returned. Restarting in %ds...", backoff)
+        except KeyboardInterrupt:
+            logger.info("Speed layer stopped by user.")
+            break
+        except Exception as e:
+            logger.error("Speed layer crashed: %s. Restarting in %ds...", e, backoff, exc_info=True)
+
+        _time.sleep(backoff)
+        backoff = min(backoff * 2, MAX_BACKOFF)
