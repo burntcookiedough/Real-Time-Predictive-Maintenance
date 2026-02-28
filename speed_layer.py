@@ -1,5 +1,7 @@
 import logging
 import sys
+import os
+import threading
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, DoubleType, StringType, ArrayType, IntegerType
@@ -29,17 +31,83 @@ schema = StructType([
 def main():
     logger.info("Initializing Speed Layer (PySpark Streaming)...")
     
-    # We must include the kafka and cassandra connectors
-    # Depending on your PySpark version, these coordinates might change. 
-    # Assumes Spark 3.x and Scala 2.12
+    # Include kafka, cassandra, AND graphframes connectors in one session
     spark = SparkSession.builder \
         .appName("PdMSpeedLayer") \
-        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,com.datastax.spark:spark-cassandra-connector_2.12:3.4.1") \
+        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,com.datastax.spark:spark-cassandra-connector_2.12:3.4.1,graphframes:graphframes:0.8.3-spark3.5-s_2.12") \
         .config("spark.cassandra.connection.host", "localhost") \
         .config("spark.cassandra.connection.port", "9042") \
         .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
+
+    # ─── Background Graph Analytics (PageRank + Communities) ─────────
+    # Runs every 5 min inside this same SparkSession — no second JVM needed.
+    GRAPH_INTERVAL_SEC = 300  # 5 minutes
+    HDFS_PATH = "./hdfs_temp/*"
+
+    def run_graph_analytics():
+        """Periodic batch: PageRank + Connected Components on historical data."""
+        import time as _t
+        while True:
+            _t.sleep(GRAPH_INTERVAL_SEC)
+            try:
+                from graphframes import GraphFrame
+
+                logger.info("[graph] Starting periodic graph analytics...")
+                df = spark.read.json(HDFS_PATH)
+                if df.rdd.isEmpty():
+                    logger.warning("[graph] No historical data found. Skipping.")
+                    continue
+
+                # Nodes
+                nodes = df.select(F.col("Product ID").alias("id")).distinct()
+                # Edges
+                edges_df = df.select(
+                    F.col("Product ID").alias("src"),
+                    F.explode("connected_to").alias("dst")
+                ).distinct()
+
+                if edges_df.rdd.isEmpty():
+                    logger.warning("[graph] No edges found. Skipping.")
+                    continue
+
+                g = GraphFrame(nodes, edges_df)
+
+                # PageRank
+                logger.info("[graph] Running PageRank (maxIter=10)...")
+                pr = g.pageRank(resetProbability=0.15, maxIter=10)
+                pr_scores = pr.vertices.select(
+                    F.col("id").alias("machine_id"),
+                    F.col("pagerank"),
+                    F.current_timestamp().alias("last_computed")
+                )
+                pr_scores.write \
+                    .format("org.apache.spark.sql.cassandra") \
+                    .mode("append") \
+                    .options(table="pagerank_scores", keyspace="pdm") \
+                    .save()
+                logger.info("[graph] PageRank saved to Cassandra (%d nodes)", pr_scores.count())
+
+                # Connected Components
+                logger.info("[graph] Running Connected Components...")
+                os.makedirs("./checkpoints/graph", exist_ok=True)
+                spark.sparkContext.setCheckpointDir("./checkpoints/graph")
+                cc = g.connectedComponents()
+                communities = cc.select(
+                    F.col("component").cast("string").alias("community_id"),
+                    F.col("id").alias("machine_id")
+                )
+                communities.write \
+                    .format("org.apache.spark.sql.cassandra") \
+                    .mode("append") \
+                    .options(table="failure_communities", keyspace="pdm") \
+                    .save()
+                logger.info("[graph] Communities saved to Cassandra (%d rows)", communities.count())
+
+            except Exception as e:
+                logger.error("[graph] Graph analytics failed (non-fatal): %s", e, exc_info=True)
+    # ─── End Graph Analytics ─────────────────────────────────────────
 
     # Read from Kafka
     logger.info("Connecting to Kafka at %s...", config.KAFKA_BROKER)
@@ -115,6 +183,11 @@ def main():
         .option("checkpointLocation", "./checkpoints/states") \
         .outputMode("append") \
         .start()
+
+    # Start the graph analytics background thread (daemon = dies with main process)
+    graph_thread = threading.Thread(target=run_graph_analytics, daemon=True, name="GraphAnalytics")
+    graph_thread.start()
+    logger.info("Graph analytics scheduler started (runs every %ds)", GRAPH_INTERVAL_SEC)
 
     logger.info("Speed layer streams active. Awaiting data...")
     spark.streams.awaitAnyTermination()
