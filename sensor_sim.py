@@ -36,33 +36,39 @@ def main():
         connections = [m for m in connections if m != process]
         machine_graph[process] = connections
 
-    # Stream data row by row
+    # Stream data continuously, cycling through the dataset indefinitely
+    total_sent = 0
+    cycle = 0
     try:
-        for index, row in df.iterrows():
-            # Convert row to dictionary
-            message = row.to_dict()
-            # Add a timestamp to simulate real-time generation
-            message['timestamp'] = time.time()
-            
-            # Add Graph Edge Metadata
-            machine_id = message['Product ID']
-            message['connected_to'] = machine_graph.get(machine_id, [])
-            
-            # Send message to Kafka
-            producer.send(config.TOPIC_RAW, value=message)
-            
-            # Log progress
-            if index % 100 == 0:
-                print(f"Sent {index} messages...")
-            
-            # Simulate high-frequency streaming (e.g., 100Hz -> 0.01s sleep)
-            time.sleep(0.01)
-            
+        while True:
+            cycle += 1
+            print(f"Starting dataset cycle #{cycle}...")
+            for index, row in df.iterrows():
+                # Convert row to dictionary
+                message = row.to_dict()
+                # Add a real-time timestamp so every message is "fresh"
+                message['timestamp'] = time.time()
+
+                # Add Graph Edge Metadata
+                machine_id = message['Product ID']
+                message['connected_to'] = machine_graph.get(machine_id, [])
+
+                # Send message to Kafka
+                producer.send(config.TOPIC_RAW, value=message)
+
+                total_sent += 1
+                if total_sent % 100 == 0:
+                    print(f"Sent {total_sent} messages total (cycle {cycle})...")
+
+                # ~100 msgs/sec — PySpark will always find fresh data
+                time.sleep(0.01)
+
     except KeyboardInterrupt:
         print("\nStreaming stopped by user.")
     finally:
+        producer.flush()
         producer.close()
-        print("Producer closed.")
+        print(f"Producer closed. Total messages sent: {total_sent}")
 
 if __name__ == "__main__":
     main()
