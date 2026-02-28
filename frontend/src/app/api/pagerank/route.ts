@@ -10,7 +10,7 @@ export async function GET() {
             machineId: row.machine_id,
             pagerank: row.pagerank,
             lastComputed: row.last_computed
-        })).sort((a, b) => b.pagerank - a.pagerank); // Sort highest pagerank first
+        })).sort((a, b) => (b.pagerank ?? 0) - (a.pagerank ?? 0)); // null-safe: default to 0
 
         return NextResponse.json(scores);
     } catch (error: any) {

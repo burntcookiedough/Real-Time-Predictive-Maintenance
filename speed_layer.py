@@ -1,7 +1,16 @@
+import logging
+import sys
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, DoubleType, StringType, ArrayType, IntegerType
 import config
+
+logging.basicConfig(
+    level=logging.INFO,
+    stream=sys.stdout,
+    format='%(asctime)s %(levelname)s [speed_layer] %(message)s'
+)
+logger = logging.getLogger("speed_layer")
 
 # Define Schema of incoming Kafka JSON
 schema = StructType([
@@ -18,7 +27,7 @@ schema = StructType([
 ])
 
 def main():
-    print("Initializing Speed Layer (PySpark Streaming)...")
+    logger.info("Initializing Speed Layer (PySpark Streaming)...")
     
     # We must include the kafka and cassandra connectors
     # Depending on your PySpark version, these coordinates might change. 
@@ -33,7 +42,7 @@ def main():
     spark.sparkContext.setLogLevel("WARN")
 
     # Read from Kafka
-    print(f"Connecting to Kafka at {config.KAFKA_BROKER}...")
+    logger.info("Connecting to Kafka at %s...", config.KAFKA_BROKER)
     df_kafka = spark \
         .readStream \
         .format("kafka") \
@@ -72,11 +81,20 @@ def main():
         F.col("prediction_score")
     )
 
-    # Sink to Cassandra
+    # Sink to Cassandra — with foreachBatch logging for observability
+    def log_alerts_batch(batch_df, batch_id):
+        count = batch_df.count()
+        logger.info("alerts.batch_id=%d records=%d", batch_id, count)
+        if count > 0:
+            batch_df.write \
+                .format("org.apache.spark.sql.cassandra") \
+                .option("keyspace", "pdm") \
+                .option("table", "realtime_alerts") \
+                .mode("append") \
+                .save()
+
     df_cassandra_alerts.writeStream \
-        .format("org.apache.spark.sql.cassandra") \
-        .option("keyspace", "pdm") \
-        .option("table", "realtime_alerts") \
+        .foreachBatch(log_alerts_batch) \
         .option("checkpointLocation", "./checkpoints/alerts") \
         .outputMode("append") \
         .start()
@@ -98,7 +116,7 @@ def main():
         .outputMode("append") \
         .start()
 
-    print("Speed layer streams active. Awaiting data...")
+    logger.info("Speed layer streams active. Awaiting data...")
     spark.streams.awaitAnyTermination()
 
 if __name__ == "__main__":

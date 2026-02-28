@@ -38,9 +38,9 @@ export default function AlertTicker({ alerts }: { alerts: any[] }) {
                             <AlertTitle className="text-sm font-semibold">{alert.machineId}</AlertTitle>
                             <AlertDescription className="flex justify-between items-center text-xs mt-1">
                                 <span>{new Date(alert.alertTime).toLocaleTimeString()}</span>
-                                <span>{alert.rotationalSpeed.toFixed(0)} RPM / {alert.airTemp.toFixed(1)}K</span>
+                                <span>{(alert.rotationalSpeed ?? 0).toFixed(0)} RPM / {(alert.airTemp ?? 0).toFixed(1)}K</span>
                                 <span className={alert.toolWear > 200 ? "text-signal-warning font-bold" : ""}>
-                                    Wear: {alert.toolWear} min
+                                    Wear: {alert.toolWear ?? 'N/A'} min
                                 </span>
                             </AlertDescription>
                         </Alert>

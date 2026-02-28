@@ -1,19 +1,28 @@
 import time
 import json
+import logging
+import sys
 import pandas as pd
 from kafka import KafkaProducer
 import config
+
+logging.basicConfig(
+    level=logging.INFO,
+    stream=sys.stdout,
+    format='%(asctime)s %(levelname)s [sensor_sim] %(message)s'
+)
+logger = logging.getLogger("sensor_sim")
 
 def json_serializer(data):
     return json.dumps(data).encode('utf-8')
 
 def main():
-    print("Initializing Sensor Simulator...")
+    logger.info("Initializing Sensor Simulator...")
     # Load AI4I 2020 dataset
     try:
         df = pd.read_csv('ai4i2020.csv')
     except FileNotFoundError:
-        print("Dataset ai4i2020.csv not found. Please ensure it is in the same directory.")
+        logger.error("Dataset ai4i2020.csv not found. Please ensure it is in the same directory.")
         return
 
     # Initialize Kafka Producer
@@ -22,8 +31,8 @@ def main():
         value_serializer=json_serializer
     )
 
-    print(f"Connected to Kafka broker at {config.KAFKA_BROKER}")
-    print(f"Starting to stream data to topic: {config.TOPIC_RAW}")
+    logger.info("Connected to Kafka broker at %s", config.KAFKA_BROKER)
+    logger.info("Starting to stream data to topic: %s", config.TOPIC_RAW)
 
     # Generate static graph relationships for machines
     unique_machines = df['Product ID'].unique()
@@ -42,7 +51,7 @@ def main():
     try:
         while True:
             cycle += 1
-            print(f"Starting dataset cycle #{cycle}...")
+            logger.info("Starting dataset cycle #%d", cycle)
             for index, row in df.iterrows():
                 # Convert row to dictionary
                 message = row.to_dict()
@@ -58,17 +67,17 @@ def main():
 
                 total_sent += 1
                 if total_sent % 100 == 0:
-                    print(f"Sent {total_sent} messages total (cycle {cycle})...")
+                    logger.info("Sent %d messages total (cycle %d)", total_sent, cycle)
 
                 # ~100 msgs/sec — PySpark will always find fresh data
                 time.sleep(0.01)
 
     except KeyboardInterrupt:
-        print("\nStreaming stopped by user.")
+        logger.info("Streaming stopped by user.")
     finally:
         producer.flush()
         producer.close()
-        print(f"Producer closed. Total messages sent: {total_sent}")
+        logger.info("Producer closed. Total messages sent: %d", total_sent)
 
 if __name__ == "__main__":
     main()
