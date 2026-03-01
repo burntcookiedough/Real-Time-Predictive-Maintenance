@@ -4,6 +4,7 @@ import sys
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
 from graphframes import GraphFrame
+import config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -15,14 +16,23 @@ logger = logging.getLogger("graph_analytics")
 HDFS_PATH = "./hdfs_temp/*"
 
 def main():
+    # Fix for Windows JVM/Py4J collision: force a separate temp dir and explicit driver/UI ports
+    os.environ["SPARK_LOCAL_DIRS"] = os.path.abspath("./spark_temp_graph")
+    os.makedirs("./spark_temp_graph", exist_ok=True)
+    
     logger.info("Initializing Spark Graph Analytics...")
     
     # We must include the graphframes package
     spark = SparkSession.builder \
         .appName("PdPGraphAnalytics") \
+        .config("spark.driver.port", "5055") \
+        .config("spark.driver.blockManager.port", "5056") \
+        .config("spark.ui.port", "4041") \
         .config("spark.jars.packages", "graphframes:graphframes:0.8.3-spark3.5-s_2.12,com.datastax.spark:spark-cassandra-connector_2.12:3.4.1") \
         .config("spark.cassandra.connection.host", "localhost") \
         .config("spark.cassandra.connection.port", "9042") \
+        .config("spark.ui.port", "4041") \
+        .config("spark.sql.catalogImplementation", "in-memory") \
         .getOrCreate()
         
     spark.sparkContext.setLogLevel("WARN")
@@ -33,6 +43,10 @@ def main():
     except Exception as e:
         logger.error("Failed to read HDFS data for graph analytics: %s", e, exc_info=True)
         return
+
+    # Limit to 100 records to prevent local GraphFrames StackOverflow in ConnectedComponents
+    # since the simulated graph connects every machine randomly.
+    df = df.limit(100)
 
     # Extract Nodes (unique machines)
     nodes = df.select(F.col("Product ID").alias("id")).distinct()
