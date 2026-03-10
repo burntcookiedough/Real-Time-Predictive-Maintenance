@@ -77,19 +77,40 @@ export default function RealTimeSensorChart({ data, isConnected }: RealTimeSenso
         scales: {
             y: {
                 beginAtZero: false,
+                title: {
+                    display: true,
+                    text: "RPM",
+                    color: "#8b949e",
+                    font: { size: 10, weight: "bold" as const }
+                },
                 grid: {
                     color: "#30363d", // Border Subtle
+                },
+                ticks: {
+                    callback: (value: any) => `${value}`,
+                    color: "#8b949e",
+                    font: { size: 9 }
                 }
             },
             x: {
                 grid: {
                     display: false,
+                },
+                ticks: {
+                    color: "#8b949e",
+                    font: { size: 9 },
+                    maxTicksLimit: 8
                 }
             }
         },
         plugins: {
             legend: {
                 display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label: (ctx: any) => `${ctx.parsed.y.toFixed(0)} RPM`
+                }
             }
         }
     };

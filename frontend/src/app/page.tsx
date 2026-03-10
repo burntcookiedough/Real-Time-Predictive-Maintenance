@@ -21,8 +21,6 @@ export default function Dashboard() {
 
   const fetchBatchData = async () => {
     try {
-      // The speed layer/alerts are populated instantly via SSE now. 
-      // We still poll the longer-running batch graph analytics.
       const [statesRes, prRes, commRes] = await Promise.all([
         fetch("/api/states"),
         fetch("/api/pagerank"),
@@ -43,50 +41,51 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchBatchData();
-    // Re-poll the slow-moving ML graph nodes every 5 seconds since it's a batch job
     const interval = setInterval(fetchBatchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <main className="max-w-[1440px] mx-auto p-4 md:p-8 min-h-screen">
-      <header className="mb-8 pb-4 border-b border-border-subtle flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+    <main className="max-w-[1440px] mx-auto p-4 md:p-6 min-h-screen">
+      {/* ── Header ──────────────────────────────────────────── */}
+      <header className="mb-6 pb-3 border-b border-border-subtle flex flex-col md:flex-row md:justify-between md:items-center gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-3 uppercase tracking-wide">
-            <ServerCog className="text-content-secondary" size={28} />
-            Lambda Architecture Dashboard
+          <h1 className="text-lg md:text-xl font-bold flex items-center gap-2 uppercase tracking-wide">
+            <ServerCog className="text-content-secondary" size={22} />
+            Predictive Maintenance Dashboard
           </h1>
-          <p className="text-content-secondary text-sm font-mono mt-2 flex items-center gap-2">
-            Unified Real-Time
-            <span className="px-1.5 py-0.5 bg-surface-raised border border-border-subtle rounded-md text-xs font-bold text-signal-healthy">SSE</span>
-            & Batch Analytics
-            <span className="px-1.5 py-0.5 bg-surface-raised border border-border-subtle rounded-md text-xs font-bold text-content-primary">POLL</span>
+          <p className="text-content-secondary text-xs font-mono mt-1 flex items-center gap-2">
+            Real-Time
+            <span className="px-1.5 py-0.5 bg-surface-raised border border-border-subtle rounded text-[0.6rem] font-bold text-signal-healthy">SSE</span>
+            + Batch
+            <span className="px-1.5 py-0.5 bg-surface-raised border border-border-subtle rounded text-[0.6rem] font-bold text-content-primary">POLL</span>
           </p>
         </div>
         <div className={cn(
-          "flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-full border",
+          "flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full border",
           !sseConnected
             ? "text-signal-critical border-signal-critical bg-signal-critical-bg"
             : "text-signal-healthy border-signal-healthy bg-signal-healthy-bg"
         )}>
-          <RefreshCcw size={16} className={sseConnected ? "animate-spin-slow" : ""} />
+          <RefreshCcw size={12} className={sseConnected ? "animate-spin-slow" : ""} />
           {sseConnected ? "SSE Active" : "Reconnecting..."}
         </div>
       </header>
 
-      {/* Speed Layer (Streaming WebSockets/SSE) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      {/* ── Speed Layer: Stream Health + Real-Time Chart (side-by-side) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <NetworkMetrics latency={sseLatency} isConnected={sseConnected} />
         <RealTimeSensorChart data={realtimeAlerts} isConnected={sseConnected} />
       </div>
 
-      <div className="flex flex-col gap-6 mb-6">
+      {/* ── Speed Layer: Alerts + Machine Monitor (stacked, compact) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <AlertTicker alerts={realtimeAlerts} />
         <FactoryFloorGrid states={states} />
       </div>
 
-      {/* Batch Layer (HDFS -> PageRank Graph ML) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-12 pt-8 border-t border-border-subtle">
+      {/* ── Batch Layer: PageRank + Fault Cascades (side-by-side) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-4 border-t border-border-subtle">
         <PageRankLeaderboard scores={pagerank} />
         <CommunityClusters communities={communities} />
       </div>
