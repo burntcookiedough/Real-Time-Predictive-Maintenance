@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.mypy_cache/
+.ruff_cache/
 
 # C extensions
 *.so
@@ -17,8 +19,14 @@ ENV/
 /hdfs_temp/
 /models/
 /checkpoints/
+/graph_snapshot/
 /spark-warehouse/
 *.csv
+ai4i2020.zip
+
+# Trained model binaries
+edge_model.pkl
+edge_model.pkl.pt
 
 # Downloaded Binaries and local environments (Hadoop/Java)
 /jdk-17*/
@@ -35,7 +43,6 @@ ENV/
 # Spark & Local Temp
 /spark_temp_graph/
 .ivy2/
-/spark-warehouse/
 
 # Next.js Frontend
 frontend/node_modules/
