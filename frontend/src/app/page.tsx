@@ -7,9 +7,10 @@ import PageRankLeaderboard from "@/components/PageRankLeaderboard";
 import CommunityClusters from "@/components/CommunityClusters";
 import RealTimeSensorChart from "@/components/RealTimeSensorChart";
 import NetworkMetrics from "@/components/NetworkMetrics";
-import { ServerCog, RefreshCcw } from "lucide-react";
+import { ServerCog, RefreshCcw, Box } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSSE } from "@/lib/useSSE";
+import Link from "next/link";
 
 export default function Dashboard() {
   const [states, setStates] = useState<any[]>([]);
@@ -61,14 +62,20 @@ export default function Dashboard() {
             <span className="px-1.5 py-0.5 bg-surface-raised border border-border-subtle rounded text-[0.6rem] font-bold text-content-primary">POLL</span>
           </p>
         </div>
-        <div className={cn(
-          "flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full border",
-          !sseConnected
-            ? "text-signal-critical border-signal-critical bg-signal-critical-bg"
-            : "text-signal-healthy border-signal-healthy bg-signal-healthy-bg"
-        )}>
-          <RefreshCcw size={12} className={sseConnected ? "animate-spin-slow" : ""} />
-          {sseConnected ? "SSE Active" : "Reconnecting..."}
+        <div className="flex items-center gap-3">
+          <Link href="/factory" className="flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border border-border-subtle text-content-secondary hover:text-content-primary hover:border-content-secondary transition-colors">
+            <Box size={12} />
+            3D View
+          </Link>
+          <div className={cn(
+            "flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full border",
+            !sseConnected
+              ? "text-signal-critical border-signal-critical bg-signal-critical-bg"
+              : "text-signal-healthy border-signal-healthy bg-signal-healthy-bg"
+          )}>
+            <RefreshCcw size={12} className={sseConnected ? "animate-spin-slow" : ""} />
+            {sseConnected ? "SSE Active" : "Reconnecting..."}
+          </div>
         </div>
       </header>
 
