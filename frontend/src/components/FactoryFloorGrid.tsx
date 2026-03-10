@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo } from "react";
-import { Server, Thermometer, RotateCcw, Wrench, ChevronDown, ChevronUp } from "lucide-react";
+import { Server, Thermometer, Wrench, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -16,8 +16,6 @@ export default function FactoryFloorGrid({ states }: { states: any[] }) {
         // Compute aggregate stats
         const temps = states.map(m => parseFloat(m.airTemp) || 0);
         const torques = states.map(m => parseFloat(m.torque) || 0);
-        const speeds = states.map(m => parseFloat(m.rotationalSpeed) || 0);
-        const wears = states.map(m => parseFloat(m.toolWear) || 0);
         const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
         const max = (arr: number[]) => Math.max(...arr);
         const min = (arr: number[]) => Math.min(...arr);
@@ -29,14 +27,13 @@ export default function FactoryFloorGrid({ states }: { states: any[] }) {
                 total: states.length,
                 critCount: crit.length,
                 healthyCount: hlth.length,
+                critPct: ((crit.length / states.length) * 100).toFixed(1),
                 avgTemp: avg(temps),
                 maxTemp: max(temps),
                 minTemp: min(temps),
                 avgTorque: avg(torques),
                 maxTorque: max(torques),
-                avgSpeed: avg(speeds),
-                maxWear: max(wears),
-                avgWear: avg(wears),
+                minTorque: min(torques),
             }
         };
     }, [states]);
@@ -77,23 +74,23 @@ export default function FactoryFloorGrid({ states }: { states: any[] }) {
                         sub={`Range: ${summary!.minTemp.toFixed(0)}–${summary!.maxTemp.toFixed(0)} K`}
                     />
                     <StatCard
-                        icon={<RotateCcw size={14} />}
-                        label="Avg Speed"
-                        value={`${summary!.avgSpeed.toFixed(0)} RPM`}
-                        sub="Rotational Speed"
-                    />
-                    <StatCard
                         icon={<Wrench size={14} />}
                         label="Avg Torque"
                         value={`${summary!.avgTorque.toFixed(1)} Nm`}
-                        sub={`Peak: ${summary!.maxTorque.toFixed(1)} Nm`}
+                        sub={`Range: ${summary!.minTorque.toFixed(0)}–${summary!.maxTorque.toFixed(0)} Nm`}
                     />
                     <StatCard
-                        icon={<Wrench size={14} />}
-                        label="Tool Wear"
-                        value={`${summary!.avgWear.toFixed(0)} min`}
-                        sub={`Max: ${summary!.maxWear.toFixed(0)} min`}
-                        alert={summary!.maxWear > 200}
+                        icon={<Server size={14} />}
+                        label="Fleet Size"
+                        value={`${summary!.total}`}
+                        sub="Monitored Machines"
+                    />
+                    <StatCard
+                        icon={<Server size={14} />}
+                        label="Critical Rate"
+                        value={`${summary!.critPct}%`}
+                        sub={`${summary!.critCount} of ${summary!.total} machines`}
+                        alert={summary!.critCount > 0}
                     />
                 </div>
 
@@ -155,10 +152,8 @@ function MachineTable({ machines, isCritical = false }: { machines: any[]; isCri
                 <tr className="text-content-tertiary uppercase tracking-wider text-[0.6rem] border-b border-border-subtle">
                     <th className="px-3 py-2 text-left font-semibold">Machine ID</th>
                     <th className="px-3 py-2 text-left font-semibold">Status</th>
-                    <th className="px-3 py-2 text-right font-semibold">Temp (K)</th>
-                    <th className="px-3 py-2 text-right font-semibold">Speed (RPM)</th>
+                    <th className="px-3 py-2 text-right font-semibold">Air Temp (K)</th>
                     <th className="px-3 py-2 text-right font-semibold">Torque (Nm)</th>
-                    <th className="px-3 py-2 text-right font-semibold">Wear (min)</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle/40">
@@ -174,14 +169,7 @@ function MachineTable({ machines, isCritical = false }: { machines: any[]; isCri
                             </span>
                         </td>
                         <td className="px-3 py-1.5 text-right">{parseFloat(m.airTemp || 0).toFixed(1)}</td>
-                        <td className="px-3 py-1.5 text-right">{parseFloat(m.rotationalSpeed || 0).toFixed(0)}</td>
                         <td className="px-3 py-1.5 text-right">{parseFloat(m.torque || 0).toFixed(1)}</td>
-                        <td className={cn(
-                            "px-3 py-1.5 text-right",
-                            parseFloat(m.toolWear || 0) > 200 && "text-signal-warning font-bold"
-                        )}>
-                            {parseFloat(m.toolWear || 0).toFixed(0)}
-                        </td>
                     </tr>
                 ))}
             </tbody>
