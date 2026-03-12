@@ -44,3 +44,27 @@ CREATE TABLE IF NOT EXISTS failure_communities (
     machine_id text,
     PRIMARY KEY (community_id, machine_id)
 );
+
+-- Table for Adaptive Edge-Cloud Controller state
+-- Tracks the self-optimizing controller's current parameters and observed metrics
+CREATE TABLE IF NOT EXISTS controller_state (
+    controller_id text PRIMARY KEY,
+    latency_threshold double,
+    cloud_sample_rate double,
+    retrain_interval int,
+    edge_anomaly_rate double,
+    cloud_backlog int,
+    avg_rtt double,
+    last_updated timestamp
+);
+
+-- Table for per-community aggregated risk scores (Graph-Augmented Scoring)
+-- Speed layer reads these to dynamically adjust per-machine anomaly thresholds
+CREATE TABLE IF NOT EXISTS community_risk (
+    community_id text PRIMARY KEY,
+    risk_score double,
+    member_count int,
+    critical_count int,
+    avg_pagerank double,
+    last_computed timestamp
+);

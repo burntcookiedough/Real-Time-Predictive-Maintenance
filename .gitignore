@@ -1,21 +1,20 @@
-# Byte-compiled / optimized / DLL files
+# ── Python ───────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
 .mypy_cache/
 .ruff_cache/
-
-# C extensions
 *.so
+.pytest_cache/
 
-# Environment
+# ── Virtual Environments ────────────────────────────────────
 .env
 .venv
 env/
 venv/
 ENV/
 
-# Data and models
+# ── Data and Models ─────────────────────────────────────────
 /hdfs_temp/
 /models/
 /checkpoints/
@@ -23,30 +22,41 @@ ENV/
 /spark-warehouse/
 *.csv
 ai4i2020.zip
+historical_data.csv
 
-# Trained model binaries
+# Trained model binaries (regenerated via train_initial_edge_model.py)
 edge_model.pkl
 edge_model.pkl.pt
 
-# Downloaded Binaries and local environments (Hadoop/Java)
+# ── Downloaded Binaries (large, not committed) ──────────────
 /jdk-17*/
 /hadoop/
-/jdk-17.zip
+jdk-17.zip
 
-# Logs
+# ── Logs ────────────────────────────────────────────────────
 *.log
 
-# IDEs
+# ── IDEs ────────────────────────────────────────────────────
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Spark & Local Temp
+# ── Spark & Local Temp ──────────────────────────────────────
 /spark_temp_graph/
 .ivy2/
+derby.log
+metastore_db/
 
-# Next.js Frontend
+# ── Next.js Frontend ────────────────────────────────────────
 frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/build/
 frontend/.env*.local
+
+# ── OS Files ────────────────────────────────────────────────
+Thumbs.db
+.DS_Store
+Desktop.ini

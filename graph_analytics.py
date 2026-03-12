@@ -125,7 +125,55 @@ def main():
         .options(table="failure_communities", keyspace="pdm") \
         .save()
 
-    logger.info("Graph Analytics Complete!")
+    # ── Community Risk Scores (Graph-Augmented Scoring) ─────────────
+    # Join communities with PageRank to compute per-community risk.
+    # The speed layer reads these to dynamically adjust anomaly thresholds.
+    logger.info("Computing Community Risk Scores for graph-augmented anomaly scoring...")
+
+    comm_with_pr = communities.join(
+        pr_scores, communities["machine_id"] == pr_scores["machine_id"], "inner"
+    ).drop(pr_scores["machine_id"])
+
+    # Compute median PageRank as the threshold for "critical" machines
+    median_pr = comm_with_pr.approxQuantile("pagerank", [0.5], 0.1)
+    median_pr_val = median_pr[0] if median_pr else 1.0
+
+    community_agg = comm_with_pr.groupBy("community_id").agg(
+        F.count("*").alias("member_count"),
+        F.avg("pagerank").alias("avg_pagerank"),
+        F.sum(
+            F.when(F.col("pagerank") > F.lit(median_pr_val), 1).otherwise(0)
+        ).alias("critical_count")
+    )
+
+    # Risk score = normalized(avg_pagerank * log(1 + member_count))
+    # Clamp to [0.0, 1.0] range. Higher = more interconnected critical community.
+    max_possible = float(
+        community_agg.agg(
+            F.max(F.col("avg_pagerank") * F.log1p(F.col("member_count")))
+        ).collect()[0][0] or 1.0
+    )
+
+    community_risk_df = community_agg.withColumn(
+        "risk_score",
+        F.least(
+            F.lit(1.0),
+            (F.col("avg_pagerank") * F.log1p(F.col("member_count"))) / F.lit(max_possible)
+        )
+    ).withColumn("last_computed", F.current_timestamp()) \
+     .select("community_id", "risk_score", "member_count", "critical_count",
+             "avg_pagerank", "last_computed")
+
+    community_risk_df.show(5)
+
+    logger.info("Saving Community Risk Scores to Cassandra...")
+    community_risk_df.write \
+        .format("org.apache.spark.sql.cassandra") \
+        .mode("append") \
+        .options(table="community_risk", keyspace="pdm") \
+        .save()
+
+    logger.info("Graph Analytics Complete (including community risk scores)!")
     spark.stop()
 
 if __name__ == "__main__":

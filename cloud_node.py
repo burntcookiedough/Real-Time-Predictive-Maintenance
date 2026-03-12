@@ -1,14 +1,15 @@
 import json
 import os
+import time
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, KafkaProducer
 import config
 
-TRAIN_THRESHOLD = 500  # Number of new rows before triggering retraining
+TRAIN_THRESHOLD = 500  # Default; adaptive controller may override via retrain_interval
 
 def json_deserializer(data):
     return json.loads(data.decode('utf-8'))
@@ -94,18 +95,25 @@ def train_model(data_path, model_path):
         if (epoch + 1) % 5 == 0:
             print(f"Epoch [{epoch+1}/{epochs}], Loss: {total_loss/len(dataloader):.4f}")
             
+    final_loss = total_loss / max(len(dataloader), 1)
+
     # Save the new model weights
     torch.save(model.state_dict(), model_path + ".pt")
     print(f"New global model trained and saved to {model_path}.pt")
     print("--- Retraining Complete ---")
 
+    return final_loss, len(df)
+
+
+def json_serializer(data):
+    return json.dumps(data).encode('utf-8')
+
 
 def main():
-    print("Starting Cloud Node Simulator...")
-    
+    print("Starting Cloud Node Simulator (with retrain feedback)...")
+
     # Ensure the historical data file has headers if it doesn't exist
     if not os.path.exists(config.CLOUD_DATA_PATH):
-        # We'll just define basic headers for the CSV
         pd.DataFrame(columns=['timestamp', 'Air temperature [K]', 'Process temperature [K]', 'Rotational speed [rpm]', 'Torque [Nm]', 'Tool wear [min]', 'routing', 'latency_ms']).to_csv(config.CLOUD_DATA_PATH, index=False)
 
     consumer = KafkaConsumer(
@@ -113,6 +121,12 @@ def main():
         auto_offset_reset='latest',
         group_id='cloud_processing_group',
         value_deserializer=json_deserializer
+    )
+
+    # Producer for publishing retrain metrics back to the adaptive controller
+    feedback_producer = KafkaProducer(
+        bootstrap_servers=[config.KAFKA_BROKER],
+        value_serializer=json_serializer
     )
 
     # Listen to both topics
@@ -156,14 +170,28 @@ def main():
                     # Periodic Retraining Check
                     if records_since_last_train >= TRAIN_THRESHOLD:
                         print(f"Threshold reached ({TRAIN_THRESHOLD} new records). Triggering retraining...")
-                        train_model(config.CLOUD_DATA_PATH, config.MODEL_PATH)
+                        result = train_model(config.CLOUD_DATA_PATH, config.MODEL_PATH)
                         records_since_last_train = 0
+
+                        # Publish retrain feedback to controller-metrics topic
+                        if result is not None:
+                            training_loss, records_trained = result
+                            feedback = {
+                                'type': 'retrain_complete',
+                                'records_trained': records_trained,
+                                'training_loss': training_loss,
+                                'timestamp': time.time()
+                            }
+                            feedback_producer.send(config.TOPIC_CONTROLLER, value=feedback)
+                            feedback_producer.flush()
+                            print(f"[cloud] Published retrain feedback: loss={training_loss:.4f} records={records_trained}")
 
     except KeyboardInterrupt:
         print("\nCloud Node stopped by user.")
     finally:
         consumer.close()
-        print("Kafka consumer closed.")
+        feedback_producer.close()
+        print("Kafka clients closed.")
 
 if __name__ == "__main__":
     main()

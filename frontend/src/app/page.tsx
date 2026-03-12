@@ -7,6 +7,7 @@ import PageRankLeaderboard from "@/components/PageRankLeaderboard";
 import CommunityClusters from "@/components/CommunityClusters";
 import RealTimeSensorChart from "@/components/RealTimeSensorChart";
 import NetworkMetrics from "@/components/NetworkMetrics";
+import ControllerStatus from "@/components/ControllerStatus";
 import { ServerCog, RefreshCcw, Box } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSSE } from "@/lib/useSSE";
@@ -16,25 +17,29 @@ export default function Dashboard() {
   const [states, setStates] = useState<any[]>([]);
   const [pagerank, setPagerank] = useState<any[]>([]);
   const [communities, setCommunities] = useState<any[]>([]);
+  const [controllerData, setControllerData] = useState<any>(null);
 
   // Hook into the Server-Sent Events stream for ~<200ms latency updates from Cassandra Server
   const { data: realtimeAlerts, latency: sseLatency, isConnected: sseConnected } = useSSE("/api/stream", 50);
 
   const fetchBatchData = async () => {
     try {
-      const [statesRes, prRes, commRes] = await Promise.all([
+      const [statesRes, prRes, commRes, ctrlRes] = await Promise.all([
         fetch("/api/states"),
         fetch("/api/pagerank"),
-        fetch("/api/communities")
+        fetch("/api/communities"),
+        fetch("/api/controller")
       ]);
 
       const statesData = statesRes.ok ? await statesRes.json() : [];
       const prData = prRes.ok ? await prRes.json() : [];
       const commData = commRes.ok ? await commRes.json() : [];
+      const ctrlData = ctrlRes.ok ? await ctrlRes.json() : null;
 
       setStates(statesData);
       setPagerank(prData);
       setCommunities(commData);
+      setControllerData(ctrlData);
     } catch (e) {
       console.error("Failed to poll Cassandra batch API:", e);
     }
@@ -78,6 +83,11 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* ── Adaptive Controller Status ────────────────────────── */}
+      <div className="mb-4">
+        <ControllerStatus data={controllerData} />
+      </div>
 
       {/* ── Speed Layer: Stream Health + Real-Time Chart (side-by-side) ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
