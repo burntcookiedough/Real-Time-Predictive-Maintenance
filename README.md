@@ -92,107 +92,57 @@ Unlike traditional predictive maintenance systems that treat machines as indepen
 
 The system implements the Lambda Architecture — a data processing pattern that provides both real-time and historical views of data through parallel speed and batch layers, unified through a serving layer.
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                        DATA INGESTION                                │
-│  sensor_sim.py → Kafka (raw-sensor-data topic)                       │
-│  AI4I 2020 dataset @ ~100 msgs/sec with graph edge metadata          │
-└────────────┬─────────────────────────┬───────────────────────────────┘
-             │                         │
-     ┌───────▼────────┐       ┌────────▼──────────┐
-     │  SPEED LAYER   │       │   BATCH LAYER     │
-     │  (Real-Time)   │       │   (Historical)    │
-     │                │       │                   │
-     │ Spark Struct.  │       │ hdfs_writer.py    │
-     │ Streaming      │       │ → HDFS storage    │
-     │ speed_layer.py │       │                   │
-     │                │       │ batch_ml_pipeline │
-     │ Graph-augmented│       │ → Random Forest   │
-     │ anomaly detect │       │                   │
-     │ → Cassandra    │       │ graph_analytics   │
-     │   alerts +     │       │ → PageRank + LPA  │
-     │   machine      │       │ → Cassandra       │
-     │   states       │       │                   │
-     └───────┬────────┘       └────────┬──────────┘
-             │                         │
-     ┌───────▼─────────────────────────▼──────────┐
-     │            SERVING LAYER                    │
-     │  Cassandra DB (6 tables)                    │
-     │  → realtime_alerts     → controller_state   │
-     │  → machine_states      → community_risk     │
-     │  → pagerank_scores     → failure_communities│
-     └───────────────────┬────────────────────────┘
-                         │
-     ┌───────────────────▼────────────────────────┐
-     │          PRESENTATION LAYER                 │
-     │  Next.js React Dashboard                    │
-     │  → SSE stream (real-time telemetry)         │
-     │  → REST APIs (batch analytics)              │
-     │  → Three.js 3D Factory Visualization        │
-     └────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["AI4I 2020 Dataset"] --> B["sensor_sim.py"]
+    B --> C["Kafka: raw-sensor-data"]
+
+    C --> D["Speed Layer<br/>speed_layer.py<br/>Spark Structured Streaming"]
+    C --> E["Batch Ingestion<br/>hdfs_writer.py"]
+    E --> F["HDFS"]
+    F --> G["batch_ml_pipeline.py<br/>Random Forest"]
+    F --> H["graph_analytics.py<br/>PageRank + Label Propagation"]
+
+    D --> I["Cassandra Serving Layer"]
+    G --> I
+    H --> I
+
+    I --> J["Next.js Dashboard"]
+    J --> K["SSE Telemetry"]
+    J --> L["REST Analytics APIs"]
+    J --> M["Three.js Factory View"]
 ```
 
 ### Edge-Cloud Fog Computing Layer
 
 The edge-cloud layer simulates fog computing by dynamically routing sensor data between edge-local inference and cloud offloading based on real-time network latency:
 
-```
-┌────────────────────────────────────────────────────────────┐
-│                     EDGE-CLOUD LAYER                        │
-│                                                             │
-│  Kafka (raw-sensor-data) ─────┐                             │
-│                                ▼                            │
-│                         edge_node.py                        │
-│                    ┌──────────┴──────────┐                  │
-│                    │  Adaptive Controller│                  │
-│                    │  Self-optimizing    │                  │
-│                    │  threshold + rates  │                  │
-│                    └──────────┬──────────┘                  │
-│                    ┌──────────┴──────────┐                  │
-│               latency < threshold  latency >= threshold     │
-│                    │                     │                   │
-│                    ▼                     ▼                   │
-│           Cloud Offload           Edge-Local ML              │
-│           (cloud_node.py)         (IsolationForest)          │
-│                    │                     │                   │
-│          PyTorch Autoencoder      Anomaly? → Kafka           │
-│          retraining every         (edge-alerts topic)        │
-│          N records (adaptive)                                │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    A["Kafka: raw-sensor-data"] --> B["edge_node.py"]
+    B --> C["Adaptive Controller"]
+    C --> D{"RTT < latency threshold?"}
+    D -- Yes --> E["Cloud Offload"]
+    E --> F["cloud_node.py"]
+    F --> G["PyTorch Autoencoder Retraining"]
+    D -- No --> H["Edge-Local Inference"]
+    H --> I["Isolation Forest"]
+    I --> J["Kafka: edge-alerts"]
+    C --> K["Adjust threshold, sample rate, retrain interval"]
 ```
 
 ### Closed-Loop Adaptive Controller
 
 The `AdaptiveController` (in `edge_node.py`) replaces fixed thresholds with a **self-optimizing feedback loop**:
 
-```
-         ┌─────────────────────────────┐
-         │   Monitor every N messages  │
-         │   (CONTROLLER_WINDOW_SIZE)  │
-         └────────────┬────────────────┘
-                      │
-         ┌────────────▼────────────────┐
-         │  Observe:                   │
-         │  • Edge anomaly rate (EMA)  │
-         │  • Cloud backlog            │
-         │  • Average RTT (EMA)        │
-         │  • F1 score estimate        │
-         └────────────┬────────────────┘
-                      │
-         ┌────────────▼────────────────┐
-         │  Adjust:                    │
-         │  • Latency threshold        │
-         │    (100ms – 400ms range)    │
-         │  • Cloud sample rate        │
-         │    (10% – 90% range)        │
-         │  • Retrain interval         │
-         │    (200 – 2000 records)     │
-         └────────────┬────────────────┘
-                      │
-         ┌────────────▼────────────────┐
-         │  Persist state → Cassandra  │
-         │  (controller_state table)   │
-         └─────────────────────────────┘
+```mermaid
+flowchart TD
+    A["Monitor every CONTROLLER_WINDOW_SIZE messages"] --> B["Observe EMA anomaly rate, backlog, RTT, F1 estimate"]
+    B --> C["Adjust latency threshold (100-400 ms)"]
+    C --> D["Adjust cloud sample rate (10%-90%)"]
+    D --> E["Adjust retrain interval (200-2000 records)"]
+    E --> F["Persist controller_state to Cassandra"]
+    F --> A
 ```
 
 **Tuning parameters** (in `config.py`):

@@ -36,6 +36,15 @@ jdk-17.zip
 # ── Logs ────────────────────────────────────────────────────
 *.log
 
+# ── Patent Assets / Generated Deliverables ──────────────────
+/Final Pictures/
+/Final Pictures.zip
+/patent_comparative_graphs/
+/patent_graphs_and_metrics/
+PatentSample.txt
+Patent_Draft_Document.txt
+patent_draft.md
+
 # ── IDEs ────────────────────────────────────────────────────
 .vscode/
 .idea/
